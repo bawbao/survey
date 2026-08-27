@@ -1,0 +1,220 @@
+// Prisma schema — Aplikasi Penjualan & Stok Opname Grosir Makanan Ringan
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  KASIR
+}
+
+enum StockMovementType {
+  PURCHASE
+  SALE
+  OPNAME_ADJUST
+  MANUAL
+}
+
+enum OpnameStatus {
+  DRAFT
+  COMPLETED
+}
+
+enum PaymentMethod {
+  CASH
+  TRANSFER
+  QRIS
+  OTHER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(KASIR)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  purchases      Purchase[]
+  sales          Sale[]
+  stockOpnames   StockOpname[]
+  stockMovements StockMovement[]
+
+  @@map("users")
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  products  Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id         String   @id @default(cuid())
+  sku        String   @unique
+  barcode    String?  @unique
+  name       String
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id])
+  unit       String   @default("pcs")
+  buyPrice   Decimal  @default(0) @db.Decimal(14, 2)
+  sellPrice  Decimal  @default(0) @db.Decimal(14, 2)
+  stock      Decimal  @default(0) @db.Decimal(14, 2)
+  minStock   Decimal  @default(0) @db.Decimal(14, 2)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  purchaseItems      PurchaseItem[]
+  saleItems          SaleItem[]
+  stockOpnameItems   StockOpnameItem[]
+  stockMovements     StockMovement[]
+
+  @@index([name])
+  @@map("products")
+}
+
+model Supplier {
+  id        String     @id @default(cuid())
+  name      String
+  phone     String?
+  address   String?
+  createdAt DateTime   @default(now())
+  purchases Purchase[]
+
+  @@map("suppliers")
+}
+
+model Purchase {
+  id         String         @id @default(cuid())
+  invoiceNo  String         @unique
+  supplierId String?
+  supplier   Supplier?      @relation(fields: [supplierId], references: [id])
+  userId     String
+  user       User           @relation(fields: [userId], references: [id])
+  date       DateTime       @default(now())
+  total      Decimal        @default(0) @db.Decimal(14, 2)
+  note       String?
+  createdAt  DateTime       @default(now())
+
+  items          PurchaseItem[]
+  stockMovements StockMovement[]
+
+  @@index([date])
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id         String   @id @default(cuid())
+  purchaseId String
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  qty        Decimal  @db.Decimal(14, 2)
+  buyPrice   Decimal  @db.Decimal(14, 2)
+  subtotal   Decimal  @db.Decimal(14, 2)
+
+  @@map("purchase_items")
+}
+
+model Sale {
+  id            String        @id @default(cuid())
+  invoiceNo     String        @unique
+  customerName  String?
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+  date          DateTime      @default(now())
+  subtotal      Decimal       @default(0) @db.Decimal(14, 2)
+  discount      Decimal       @default(0) @db.Decimal(14, 2)
+  total         Decimal       @default(0) @db.Decimal(14, 2)
+  paymentMethod PaymentMethod @default(CASH)
+  note          String?
+  createdAt     DateTime      @default(now())
+
+  items          SaleItem[]
+  stockMovements StockMovement[]
+
+  @@index([date])
+  @@map("sales")
+}
+
+model SaleItem {
+  id        String  @id @default(cuid())
+  saleId    String
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  qty       Decimal @db.Decimal(14, 2)
+  sellPrice Decimal @db.Decimal(14, 2)
+  subtotal  Decimal @db.Decimal(14, 2)
+
+  @@map("sale_items")
+}
+
+model StockOpname {
+  id        String            @id @default(cuid())
+  code      String            @unique
+  date      DateTime          @default(now())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id])
+  status    OpnameStatus      @default(DRAFT)
+  note      String?
+  createdAt DateTime          @default(now())
+  completedAt DateTime?
+
+  items          StockOpnameItem[]
+  stockMovements StockMovement[]
+
+  @@map("stock_opnames")
+}
+
+model StockOpnameItem {
+  id            String      @id @default(cuid())
+  opnameId      String
+  opname        StockOpname @relation(fields: [opnameId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+  systemQty     Decimal     @db.Decimal(14, 2)
+  actualQty     Decimal?    @db.Decimal(14, 2)
+  difference    Decimal?    @db.Decimal(14, 2)
+  note          String?
+
+  @@unique([opnameId, productId])
+  @@map("stock_opname_items")
+}
+
+// Ledger of every stock-affecting event, used for kartu stok & reconciliation.
+model StockMovement {
+  id        String            @id @default(cuid())
+  productId String
+  product   Product           @relation(fields: [productId], references: [id])
+  type      StockMovementType
+  qty       Decimal           @db.Decimal(14, 2) // positive = masuk, negative = keluar
+  balance   Decimal           @db.Decimal(14, 2) // stok setelah pergerakan ini
+  note      String?
+  date      DateTime          @default(now())
+
+  purchaseId String?
+  purchase   Purchase? @relation(fields: [purchaseId], references: [id])
+  saleId     String?
+  sale       Sale?     @relation(fields: [saleId], references: [id])
+  opnameId   String?
+  opname     StockOpname? @relation(fields: [opnameId], references: [id])
+
+  userId String?
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([productId, date])
+  @@map("stock_movements")
+}
