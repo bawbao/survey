@@ -5,13 +5,13 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { formatCurrency, formatNumber } from "@/lib/format";
-import { Wallet, Receipt, Package, AlertTriangle, Boxes, ShoppingBag, Printer } from "lucide-react";
+import { Wallet, Receipt, Package, AlertTriangle, Boxes, ShoppingBag, Printer, TrendingUp, Percent } from "lucide-react";
 import { PeriodFilter, presetPeriod, type Period } from "./PeriodFilter";
 import { StatCard } from "./StatCard";
 import { DailyBarChart } from "./DailyBarChart";
-import type { SalesReport, PurchasesReport, StockReport } from "@/types/models";
+import type { SalesReport, PurchasesReport, StockReport, ProfitReport } from "@/types/models";
 
-type Tab = "penjualan" | "pembelian" | "stok";
+type Tab = "penjualan" | "pembelian" | "laba" | "stok";
 
 export function LaporanClient() {
   const [tab, setTab] = useState<Tab>("penjualan");
@@ -20,6 +20,7 @@ export function LaporanClient() {
   const [salesReport, setSalesReport] = useState<SalesReport | null>(null);
   const [purchasesReport, setPurchasesReport] = useState<PurchasesReport | null>(null);
   const [stockReport, setStockReport] = useState<StockReport | null>(null);
+  const [profitReport, setProfitReport] = useState<ProfitReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,29 +34,30 @@ export function LaporanClient() {
     }
     setLoading(true);
     const params = new URLSearchParams({ from: period.from, to: period.to });
-    const endpoint = tab === "penjualan" ? "/api/reports/sales" : "/api/reports/purchases";
+    const endpoint =
+      tab === "penjualan" ? "/api/reports/sales" : tab === "pembelian" ? "/api/reports/purchases" : "/api/reports/profit";
+    const setter = tab === "penjualan" ? setSalesReport : tab === "pembelian" ? setPurchasesReport : setProfitReport;
     fetch(`${endpoint}?${params.toString()}`)
       .then((r) => r.json())
-      .then(tab === "penjualan" ? setSalesReport : setPurchasesReport)
+      .then(setter)
       .finally(() => setLoading(false));
   }, [tab, period]);
 
   const printHref =
-    tab === "stok"
-      ? "/print/laporan?type=stok"
-      : `/print/laporan?type=${tab === "penjualan" ? "penjualan" : "pembelian"}&from=${period.from}&to=${period.to}`;
+    tab === "stok" ? "/print/laporan?type=stok" : `/print/laporan?type=${tab}&from=${period.from}&to=${period.to}`;
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "penjualan", label: "Penjualan" },
+    { key: "pembelian", label: "Pembelian" },
+    { key: "laba", label: "Laba" },
+    { key: "stok", label: "Stok" },
+  ];
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex rounded-xl border border-border overflow-hidden text-sm">
-          {(
-            [
-              { key: "penjualan", label: "Penjualan" },
-              { key: "pembelian", label: "Pembelian" },
-              { key: "stok", label: "Stok" },
-            ] as { key: Tab; label: string }[]
-          ).map((t) => (
+          {tabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
@@ -111,6 +113,59 @@ export function LaporanClient() {
           <Card className="overflow-hidden">
             <CardHeader title="Barang Paling Banyak Dibeli" />
             <TopProductsTable rows={purchasesReport.topProducts} />
+          </Card>
+        </>
+      )}
+
+      {!loading && tab === "laba" && profitReport && (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard icon={TrendingUp} label="Laba Kotor" value={formatCurrency(profitReport.totalProfit)} />
+            <StatCard icon={Percent} label="Margin Laba" value={`${profitReport.marginPercent.toFixed(1)}%`} />
+            <StatCard icon={Wallet} label="Total Pendapatan" value={formatCurrency(profitReport.totalRevenue)} />
+            <StatCard icon={Package} label="Total Modal" value={formatCurrency(profitReport.totalCost)} tone="amber" />
+          </div>
+          <Card>
+            <CardHeader title="Tren Laba Harian" />
+            <div className="px-5 sm:px-6 pb-5 pt-2">
+              <DailyBarChart data={profitReport.daily} />
+            </div>
+          </Card>
+          <Card className="overflow-hidden">
+            <CardHeader title="Produk Paling Menguntungkan" />
+            {profitReport.topProducts.length === 0 ? (
+              <div className="px-5 py-8 text-center text-sm text-muted">Belum ada data pada periode ini.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-background text-muted text-xs uppercase tracking-wide">
+                    <tr>
+                      <th className="text-left font-medium px-5 py-3">Produk</th>
+                      <th className="text-right font-medium px-5 py-3">Jumlah</th>
+                      <th className="text-right font-medium px-5 py-3">Pendapatan</th>
+                      <th className="text-right font-medium px-5 py-3">Modal</th>
+                      <th className="text-right font-medium px-5 py-3">Laba</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {profitReport.topProducts.map((r) => (
+                      <tr key={r.productId}>
+                        <td className="px-5 py-3">
+                          <p className="font-medium text-foreground">{r.name}</p>
+                          <p className="text-xs text-muted">{r.sku}</p>
+                        </td>
+                        <td className="px-5 py-3 text-right tabular-nums">{formatNumber(r.qty)}</td>
+                        <td className="px-5 py-3 text-right tabular-nums">{formatCurrency(r.revenue)}</td>
+                        <td className="px-5 py-3 text-right tabular-nums text-muted">{formatCurrency(r.cost)}</td>
+                        <td className="px-5 py-3 text-right tabular-nums font-semibold text-brand-700">
+                          {formatCurrency(r.profit)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Card>
         </>
       )}

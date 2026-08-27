@@ -1,12 +1,24 @@
+import { requireAdmin } from "@/lib/session";
 import { parseDateRange } from "@/lib/date-range";
-import { getSalesReport, getPurchasesReport, getStockReport } from "@/lib/reports";
+import { getSalesReport, getPurchasesReport, getStockReport, getProfitReport } from "@/lib/reports";
 import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
 
 type SearchParams = { type?: string; from?: string; to?: string };
+type ReportType = "penjualan" | "pembelian" | "laba" | "stok";
+
+const TYPE_LABEL: Record<ReportType, string> = {
+  penjualan: "Penjualan",
+  pembelian: "Pembelian",
+  laba: "Laba",
+  stok: "Stok",
+};
 
 export default async function PrintLaporanPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  await requireAdmin();
+
   const sp = await searchParams;
-  const type = sp.type === "pembelian" ? "pembelian" : sp.type === "stok" ? "stok" : "penjualan";
+  const type: ReportType =
+    sp.type === "pembelian" || sp.type === "laba" || sp.type === "stok" ? sp.type : "penjualan";
 
   const params = new URLSearchParams();
   if (sp.from) params.set("from", sp.from);
@@ -19,13 +31,14 @@ export default async function PrintLaporanPage({ searchParams }: { searchParams:
       <div className="border-b border-gray-300 pb-4 mb-6">
         <h1 className="text-lg font-bold">Grosir Snack</h1>
         <p className="text-gray-500">
-          Laporan {type === "penjualan" ? "Penjualan" : type === "pembelian" ? "Pembelian" : "Stok"}
+          Laporan {TYPE_LABEL[type]}
           {type !== "stok" && ` · Periode ${periodLabel}`}
         </p>
       </div>
 
       {type === "penjualan" && <SalesReportPrint gte={gte} lte={lte} />}
       {type === "pembelian" && <PurchasesReportPrint gte={gte} lte={lte} />}
+      {type === "laba" && <ProfitReportPrint gte={gte} lte={lte} />}
       {type === "stok" && <StockReportPrint />}
 
       <p className="text-center text-xs text-gray-400 mt-10">Dicetak dari Aplikasi Kasir &amp; Stok Grosir Snack</p>
@@ -64,6 +77,51 @@ async function PurchasesReportPrint({ gte, lte }: { gte: Date; lte: Date }) {
       />
       <h2 className="font-semibold mb-2 mt-6">Barang Paling Banyak Dibeli</h2>
       <ProductTable rows={report.topProducts} />
+    </>
+  );
+}
+
+async function ProfitReportPrint({ gte, lte }: { gte: Date; lte: Date }) {
+  const report = await getProfitReport(gte, lte);
+  return (
+    <>
+      <SummaryGrid
+        items={[
+          ["Laba Kotor", formatCurrency(report.totalProfit)],
+          ["Margin Laba", `${report.marginPercent.toFixed(1)}%`],
+          ["Total Pendapatan", formatCurrency(report.totalRevenue)],
+          ["Total Modal", formatCurrency(report.totalCost)],
+        ]}
+      />
+      <h2 className="font-semibold mb-2 mt-6">Produk Paling Menguntungkan</h2>
+      {report.topProducts.length === 0 ? (
+        <p className="text-gray-500">Tidak ada data pada periode ini.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b-2 border-gray-800">
+              <th className="text-left font-semibold py-2">Produk</th>
+              <th className="text-right font-semibold py-2">Jumlah</th>
+              <th className="text-right font-semibold py-2">Pendapatan</th>
+              <th className="text-right font-semibold py-2">Modal</th>
+              <th className="text-right font-semibold py-2">Laba</th>
+            </tr>
+          </thead>
+          <tbody>
+            {report.topProducts.map((r) => (
+              <tr key={r.productId} className="border-b border-gray-200">
+                <td className="py-2">
+                  {r.name} <span className="text-gray-500">({r.sku})</span>
+                </td>
+                <td className="py-2 text-right">{formatNumber(r.qty)}</td>
+                <td className="py-2 text-right">{formatCurrency(r.revenue)}</td>
+                <td className="py-2 text-right">{formatCurrency(r.cost)}</td>
+                <td className="py-2 text-right font-semibold">{formatCurrency(r.profit)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </>
   );
 }

@@ -125,6 +125,26 @@ export interface StockReport {
   rows: StockReportRow[];
 }
 
+export interface ProfitProductRow {
+  productId: string;
+  name: string;
+  sku: string;
+  qty: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+}
+
+export interface ProfitReport {
+  totalRevenue: number;
+  totalCost: number;
+  totalDiscount: number;
+  totalProfit: number;
+  marginPercent: number;
+  daily: DailyPoint[];
+  topProducts: ProfitProductRow[];
+}
+
 export type OpnameStatus = "DRAFT" | "COMPLETED";
 
 export interface StockOpnameItemDTO {

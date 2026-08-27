@@ -158,6 +158,11 @@ model SaleItem {
   qty       Decimal @db.Decimal(14, 2)
   sellPrice Decimal @db.Decimal(14, 2)
   subtotal  Decimal @db.Decimal(14, 2)
+  // Harga beli produk saat transaksi ini terjadi (snapshot), dipakai untuk
+  // laporan laba supaya tetap akurat walau harga beli produk berubah belakangan.
+  // Null untuk transaksi lama sebelum kolom ini ada -> laporan laba jatuh
+  // balik memakai harga beli produk saat ini sebagai perkiraan.
+  buyPriceAtSale Decimal? @db.Decimal(14, 2)
 
   @@map("sale_items")
 }

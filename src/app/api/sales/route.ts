@@ -62,13 +62,16 @@ export async function POST(req: Request) {
     const total = Math.max(0, subtotal - body.discount);
 
     const sale = await prisma.$transaction(async (tx) => {
-      // Validasi stok tersedia sebelum memproses transaksi.
+      // Validasi stok tersedia sebelum memproses transaksi, sekaligus catat
+      // harga beli saat ini untuk snapshot laba (buyPriceAtSale).
+      const buyPriceAtSale = new Map<string, number>();
       for (const [productId, i] of merged.entries()) {
         const product = await tx.product.findUnique({ where: { id: productId } });
         if (!product) throw new InsufficientStockError(`Produk tidak ditemukan.`);
         if (Number(product.stock) < i.qty) {
           throw new InsufficientStockError(`Stok "${product.name}" tidak cukup (tersedia ${product.stock} ${product.unit}).`);
         }
+        buyPriceAtSale.set(productId, Number(product.buyPrice));
       }
 
       const prefix = "PJ";
@@ -93,6 +96,7 @@ export async function POST(req: Request) {
               qty: i.qty,
               sellPrice: i.sellPrice,
               subtotal: i.qty * i.sellPrice,
+              buyPriceAtSale: buyPriceAtSale.get(productId),
             })),
           },
         },
