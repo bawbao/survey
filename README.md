@@ -158,13 +158,19 @@ gratis) — keduanya punya paket gratis dan tidak perlu kartu kredit:
 
 Karena database masih kosong, isi salah satu cara berikut:
 
-- **Cara cepat**: jalankan `npm run db:seed` dari komputer Anda dengan
-  `DATABASE_URL` di `.env` diarahkan ke connection string Neon di atas —
-  ini akan membuat akun admin/kasir contoh dan beberapa produk contoh.
+- **Cara paling gampang (tanpa install apa pun)**: buka
+  `https://<domain-vercel-anda>/api/setup` sekali di browser. Halaman ini
+  otomatis membuatkan akun admin/kasir contoh + data awal langsung ke
+  database produksi. Aman dibuka berkali-kali — kalau sudah pernah ada
+  akun, tidak akan mengubah apa pun lagi (cukup tampil pesan "Sudah pernah
+  di-setup").
+- **Cara lewat komputer**: jalankan `npm run db:seed` dari komputer Anda
+  dengan `DATABASE_URL` di `.env` diarahkan ke connection string Neon di
+  atas.
 - **Cara manual**: buka `npx prisma studio` (juga diarahkan ke
   `DATABASE_URL` Neon) lalu tambahkan 1 baris di tabel `users` secara
   manual (ingat, kolom `passwordHash` harus di-hash bcrypt, bukan teks
-  polos — jadi cara seed lebih disarankan).
+  polos — jadi dua cara di atas lebih disarankan).
 
 Setelah online, aplikasi bisa diakses dari HP, tablet, atau komputer mana
 pun — kasir di toko dan pemilik yang memantau dari luar bisa memakai data
