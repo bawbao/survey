@@ -36,31 +36,38 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const body = updateOpnameItemsSchema.parse(await req.json());
 
-    await prisma.$transaction(
-      body.items.map((item) =>
-        prisma.stockOpnameItem.updateMany({
-          where: { opnameId: id, productId: item.productId },
-          data: {
-            actualQty: item.actualQty,
-            difference: item.actualQty === null ? null : undefined,
-            note: item.note,
-          },
-        }),
-      ),
-    );
+    // Upsert per barang: barang yang sudah ada di sesi ini diupdate, barang yang
+    // baru saja di-scan/didaftarkan (belum ada di snapshot awal sesi) ditambahkan
+    // sebagai baris baru, dengan stok sistem diambil dari data produk saat ini.
+    await prisma.$transaction(async (tx) => {
+      for (const item of body.items) {
+        const existing = await tx.stockOpnameItem.findUnique({
+          where: { opnameId_productId: { opnameId: id, productId: item.productId } },
+        });
 
-    // Hitung selisih terpisah karena butuh nilai systemQty tiap item.
-    const items = await prisma.stockOpnameItem.findMany({ where: { opnameId: id } });
-    await prisma.$transaction(
-      items
-        .filter((i) => i.actualQty !== null)
-        .map((i) =>
-          prisma.stockOpnameItem.update({
-            where: { id: i.id },
-            data: { difference: Number(i.actualQty) - Number(i.systemQty) },
-          }),
-        ),
-    );
+        if (existing) {
+          const difference = item.actualQty === null ? null : Number(item.actualQty) - Number(existing.systemQty);
+          await tx.stockOpnameItem.update({
+            where: { id: existing.id },
+            data: { actualQty: item.actualQty, difference, note: item.note },
+          });
+        } else {
+          const product = await tx.product.findUnique({ where: { id: item.productId } });
+          if (!product) continue;
+          const difference = item.actualQty === null ? null : Number(item.actualQty) - Number(product.stock);
+          await tx.stockOpnameItem.create({
+            data: {
+              opnameId: id,
+              productId: item.productId,
+              systemQty: product.stock,
+              actualQty: item.actualQty,
+              difference,
+              note: item.note,
+            },
+          });
+        }
+      }
+    });
 
     return NextResponse.json({ ok: true });
   } catch (err) {

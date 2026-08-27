@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -41,17 +41,17 @@ export function OpnameDetailClient({
   const [saving, setSaving] = useState(false);
   const [completing, setCompleting] = useState(false);
 
-  const productIds = useMemo(() => new Set(rows.map((r) => r.productId)), [rows]);
-
   function handleScan(product: ProductDTO) {
-    if (!productIds.has(product.id)) {
-      setError(`"${product.name}" tidak termasuk dalam sesi opname ini.`);
-      return;
-    }
     setError(null);
-    setRows((prev) =>
-      prev.map((r) => (r.productId === product.id ? { ...r, actualQty: (r.actualQty ?? 0) + 1 } : r)),
-    );
+    setRows((prev) => {
+      const existing = prev.find((r) => r.productId === product.id);
+      if (existing) {
+        return prev.map((r) => (r.productId === product.id ? { ...r, actualQty: (r.actualQty ?? 0) + 1 } : r));
+      }
+      // Barang belum ada di sesi ini (mis. baru saja didaftarkan lewat "Daftarkan barang baru")
+      // -> tambahkan sebagai baris baru, stok sistem diambil dari data produk saat ini.
+      return [...prev, { productId: product.id, product, systemQty: Number(product.stock), actualQty: 1 }];
+    });
   }
 
   function updateQty(productId: string, value: string) {

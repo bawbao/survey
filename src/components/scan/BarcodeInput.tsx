@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ScanBarcode, Loader2 } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { ScanBarcode, Loader2, PackagePlus } from "lucide-react";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import type { ProductDTO } from "@/types/models";
+import { QuickAddProductModal } from "./QuickAddProductModal";
 
 /**
  * Input serbaguna untuk menambahkan barang ke transaksi:
  * - Scanner barcode fisik (USB/Bluetooth) mengetik kode lalu mengirim Enter -> otomatis dicari & ditambahkan.
  * - Diketik manual: hasil pencarian nama/SKU/barcode muncul sebagai dropdown, klik untuk menambahkan.
+ * - Kalau kodenya belum terdaftar, Admin bisa langsung mendaftarkan barang baru (nama, harga beli/jual) dari sini.
  * Input tetap fokus setelah setiap penambahan supaya proses scan berturut-turut tetap cepat.
  */
 export function BarcodeInput({
@@ -20,11 +23,15 @@ export function BarcodeInput({
   autoFocus?: boolean;
   placeholder?: string;
 }) {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ProductDTO[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [notFound, setNotFound] = useState(false);
+  const [notFoundCode, setNotFoundCode] = useState<string | null>(null);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -37,7 +44,7 @@ export function BarcodeInput({
       setOpen(false);
       return;
     }
-    setNotFound(false);
+    setNotFoundCode(null);
     const t = setTimeout(async () => {
       setLoading(true);
       try {
@@ -59,7 +66,7 @@ export function BarcodeInput({
     setQuery("");
     setResults([]);
     setOpen(false);
-    setNotFound(false);
+    setNotFoundCode(null);
     inputRef.current?.focus();
   }
 
@@ -74,7 +81,7 @@ export function BarcodeInput({
     if (!code) return;
 
     setLoading(true);
-    setNotFound(false);
+    setNotFoundCode(null);
     try {
       const res = await fetch(`/api/products/barcode/${encodeURIComponent(code)}`);
       if (res.ok) {
@@ -85,7 +92,7 @@ export function BarcodeInput({
         addAndReset(results[0]);
         return;
       }
-      setNotFound(true);
+      setNotFoundCode(code);
     } finally {
       setLoading(false);
     }
@@ -109,10 +116,21 @@ export function BarcodeInput({
         {loading && <Loader2 className="absolute right-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-muted animate-spin" />}
       </div>
 
-      {notFound && !loading && (
-        <p className="text-xs text-danger-600 mt-1.5 px-1">
-          Barang &quot;{query}&quot; tidak ditemukan. Coba cari nama produk di bawah.
-        </p>
+      {notFoundCode && !loading && (
+        <div className="flex flex-wrap items-center gap-2 mt-1.5 px-1">
+          <p className="text-xs text-danger-600">
+            Barang &quot;{notFoundCode}&quot; tidak ditemukan.
+          </p>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => setQuickAddOpen(true)}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800"
+            >
+              <PackagePlus className="h-3.5 w-3.5" /> Daftarkan sebagai barang baru
+            </button>
+          )}
+        </div>
       )}
 
       {open && results.length > 0 && (
@@ -135,6 +153,15 @@ export function BarcodeInput({
             </button>
           ))}
         </div>
+      )}
+
+      {isAdmin && (
+        <QuickAddProductModal
+          open={quickAddOpen}
+          onClose={() => setQuickAddOpen(false)}
+          initialBarcode={notFoundCode ?? query.trim()}
+          onCreated={(product) => addAndReset(product)}
+        />
       )}
     </div>
   );
