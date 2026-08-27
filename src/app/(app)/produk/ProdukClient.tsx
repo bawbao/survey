@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Select } from "@/components/ui/Input";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatCurrency, formatNumber } from "@/lib/format";
-import { Search, Plus, Pencil, PowerOff, Power, Tags, Package } from "lucide-react";
+import { Search, Plus, Pencil, PowerOff, Power, Tags, Package, Trash2 } from "lucide-react";
 import type { CategoryDTO, ProductDTO } from "@/types/models";
 import { ProductFormModal } from "./ProductFormModal";
 import { CategoryManagerModal } from "./CategoryManagerModal";
@@ -23,6 +23,7 @@ export function ProdukClient({ initialCategories }: { initialCategories: Categor
   const [formOpen, setFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductDTO | null>(null);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const refreshCategories = useCallback(async () => {
     const res = await fetch("/api/categories");
@@ -50,20 +51,39 @@ export function ProdukClient({ initialCategories }: { initialCategories: Categor
     const confirmMsg = activating ? `Aktifkan kembali "${product.name}"?` : `Nonaktifkan "${product.name}"?`;
     if (!confirm(confirmMsg)) return;
 
-    if (activating) {
-      await fetch(`/api/products/${product.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive: true }),
-      });
-    } else {
-      await fetch(`/api/products/${product.id}`, { method: "DELETE" });
+    setError(null);
+    const res = await fetch(`/api/products/${product.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isActive: activating }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error ?? "Gagal mengubah status produk.");
+      return;
+    }
+    fetchProducts();
+  }
+
+  async function handleDelete(product: ProductDTO) {
+    if (!confirm(`Hapus "${product.name}" secara permanen? Tindakan ini tidak bisa dibatalkan.`)) return;
+
+    setError(null);
+    const res = await fetch(`/api/products/${product.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error ?? "Gagal menghapus produk.");
+      return;
     }
     fetchProducts();
   }
 
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="rounded-xl bg-red-50 border border-red-200 text-danger-600 text-sm px-4 py-3">{error}</div>
+      )}
+
       <Card className="p-4 sm:p-5">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px]">
@@ -167,9 +187,16 @@ export function ProdukClient({ initialCategories }: { initialCategories: Categor
                         <button
                           onClick={() => toggleActive(p)}
                           title={p.isActive ? "Nonaktifkan" : "Aktifkan"}
-                          className={`h-8 w-8 flex items-center justify-center rounded-lg hover:bg-black/5 ${p.isActive ? "text-danger-600" : "text-brand-600"}`}
+                          className={`h-8 w-8 flex items-center justify-center rounded-lg hover:bg-black/5 ${p.isActive ? "text-amber-600" : "text-brand-600"}`}
                         >
                           {p.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(p)}
+                          title="Hapus"
+                          className="h-8 w-8 flex items-center justify-center rounded-lg text-danger-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </td>

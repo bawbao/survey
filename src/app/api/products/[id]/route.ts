@@ -38,16 +38,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 }
 
-// Nonaktifkan produk (soft-delete) supaya riwayat transaksi lama tetap utuh.
+// Hapus produk secara permanen. Kalau produk sudah pernah dipakai di
+// transaksi (pembelian/penjualan/opname/kartu stok), akan gagal karena
+// masih direferensikan — gunakan "Nonaktifkan" (PATCH isActive) untuk kasus itu.
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { error } = await requireApiAdmin();
   if (error) return error;
   const { id } = await params;
 
   try {
-    const product = await prisma.product.update({ where: { id }, data: { isActive: false } });
-    return NextResponse.json(product);
+    await prisma.product.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
   } catch (err) {
-    return handleApiError(err, "Gagal menonaktifkan produk.");
+    return handleApiError(err, "Gagal menghapus produk. Coba nonaktifkan saja jika produk sudah pernah dipakai di transaksi.");
   }
 }
