@@ -8,6 +8,7 @@ import {
   BarChart3,
   Users,
   Wallet,
+  Settings,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -28,4 +29,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/pengeluaran", label: "Pengeluaran", icon: Wallet, adminOnly: true },
   { href: "/laporan", label: "Laporan", icon: BarChart3, adminOnly: true },
   { href: "/users", label: "Pengguna", icon: Users, adminOnly: true },
+  { href: "/pengaturan", label: "Pengaturan", icon: Settings, adminOnly: true },
 ];

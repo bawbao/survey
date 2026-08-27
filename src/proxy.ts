@@ -12,6 +12,7 @@ const ADMIN_ONLY_PREFIXES = [
   "/pengeluaran",
   "/laporan",
   "/users",
+  "/pengaturan",
   "/print/pembelian",
   "/print/laporan",
 ];

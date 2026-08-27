@@ -29,6 +29,15 @@ maupun di-deploy online agar bisa diakses banyak perangkat sekaligus.
 - **Scan barcode** — didesain untuk scanner USB/Bluetooth (bekerja sebagai
   keyboard). Kolom scan juga mendukung pencarian manual by nama/SKU untuk
   perangkat tanpa scanner.
+- **Laba Kotor & Laba Bersih** (khusus Admin) — laba kotor otomatis dihitung
+  dari selisih harga jual & harga beli tiap transaksi. Ditambah modul
+  **Pengeluaran** untuk mencatat biaya operasional (gaji karyawan, sewa,
+  transport, dll — kategori bisa dicustom sendiri), sehingga laba bersih
+  (laba kotor - pengeluaran) juga otomatis terhitung per periode.
+- **Cadangkan & Pulihkan Data** (menu Pengaturan, khusus Admin) — unduh
+  seluruh data aplikasi sebagai 1 file, berguna terutama untuk instalasi
+  lokal/offline yang tidak punya cadangan otomatis ke cloud. Bisa dipulihkan
+  kapan saja (misalnya saat pindah ke komputer baru).
 - Tampilan responsif (desktop & mobile) dengan bahasa Indonesia, dirancang
   agar mudah dipakai orang awam.
 
