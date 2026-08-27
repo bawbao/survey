@@ -122,18 +122,49 @@ tidak perlu instalasi driver tambahan:
 ## Deploy ke Cloud (Produksi)
 
 Karena data disimpan di PostgreSQL, aplikasi ini bisa di-deploy ke provider
-mana pun yang mendukung Next.js + PostgreSQL, misalnya:
+mana pun yang mendukung Next.js + PostgreSQL. Berikut langkah paling
+sederhana pakai **Vercel** (hosting aplikasi) + **Neon** (database Postgres
+gratis) — keduanya punya paket gratis dan tidak perlu kartu kredit:
 
-1. **Database**: buat database PostgreSQL di [Supabase](https://supabase.com),
-   [Neon](https://neon.tech), [Railway](https://railway.app), atau provider
-   lain, lalu salin connection string-nya ke `DATABASE_URL`.
-2. **Aplikasi**: deploy folder ini ke [Vercel](https://vercel.com),
-   [Railway](https://railway.app), atau VPS sendiri. Set environment
-   variable `DATABASE_URL`, `AUTH_SECRET`, `NEXTAUTH_SECRET`, dan
-   `NEXTAUTH_URL` (isi dengan domain produksi).
-3. Jalankan migrasi di database produksi: `npx prisma migrate deploy`.
-4. (Opsional) jalankan `npm run db:seed` sekali untuk akun admin awal, atau
-   buat akun admin pertama secara manual lewat `npx prisma studio`.
+### A. Buat database di Neon
+
+1. Daftar/login di [neon.tech](https://neon.tech), buat **New Project**.
+2. Di dashboard project, salin **Connection string** (pilih yang *pooled
+   connection*, biasanya ada tulisan "Pooled connection"). Bentuknya kira-kira:
+   `postgresql://user:password@ep-xxxx-pooler.region.aws.neon.tech/neondb?sslmode=require`
+
+### B. Deploy aplikasi ke Vercel
+
+1. Daftar/login di [vercel.com](https://vercel.com) pakai akun GitHub Anda.
+2. Klik **Add New → Project**, pilih repo `bawbao/survey`, lalu pilih branch
+   `claude/sales-inventory-app-jjw1x1` (atau `main` kalau sudah di-merge).
+3. Di bagian **Environment Variables**, tambahkan:
+   - `DATABASE_URL` → connection string dari Neon (langkah A)
+   - `AUTH_SECRET` → nilai acak, generate di [generate-secret.vercel.app](https://generate-secret.vercel.app/32)
+   - `NEXTAUTH_SECRET` → isi sama dengan `AUTH_SECRET`
+   - `NEXTAUTH_URL` → isi sementara `https://placeholder.vercel.app` (nanti
+     bisa diedit setelah tahu domain aslinya, lalu redeploy)
+4. Klik **Deploy**. Repo ini sudah dilengkapi script `vercel-build` yang
+   otomatis menjalankan migrasi database (`prisma migrate deploy`) setiap
+   deploy — jadi tabel akan otomatis dibuat, tidak perlu langkah manual.
+5. Setelah selesai, Vercel akan kasih link seperti
+   `https://survey-xxxx.vercel.app` — itu link yang bisa dibuka di browser
+   mana saja.
+6. Update env `NEXTAUTH_URL` dengan link asli tadi, lalu **Redeploy** sekali
+   lagi (Vercel → tab Deployments → ⋯ → Redeploy) supaya login berjalan
+   normal.
+
+### C. Isi data awal
+
+Karena database masih kosong, isi salah satu cara berikut:
+
+- **Cara cepat**: jalankan `npm run db:seed` dari komputer Anda dengan
+  `DATABASE_URL` di `.env` diarahkan ke connection string Neon di atas —
+  ini akan membuat akun admin/kasir contoh dan beberapa produk contoh.
+- **Cara manual**: buka `npx prisma studio` (juga diarahkan ke
+  `DATABASE_URL` Neon) lalu tambahkan 1 baris di tabel `users` secara
+  manual (ingat, kolom `passwordHash` harus di-hash bcrypt, bukan teks
+  polos — jadi cara seed lebih disarankan).
 
 Setelah online, aplikasi bisa diakses dari HP, tablet, atau komputer mana
 pun — kasir di toko dan pemilik yang memantau dari luar bisa memakai data
