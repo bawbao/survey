@@ -5,13 +5,14 @@ import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { formatCurrency, formatDateTime } from "@/lib/format";
-import { Search, Truck, ChevronRight } from "lucide-react";
+import { Search, Truck, ChevronRight, Trash2 } from "lucide-react";
 import type { PurchaseDTO } from "@/types/models";
 
 export function PembelianClient() {
   const [purchases, setPurchases] = useState<PurchaseDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const fetchPurchases = useCallback(async () => {
     setLoading(true);
@@ -27,8 +28,30 @@ export function PembelianClient() {
     return () => clearTimeout(t);
   }, [fetchPurchases]);
 
+  async function handleDelete(purchase: PurchaseDTO) {
+    if (
+      !confirm(
+        `Hapus pembelian "${purchase.invoiceNo}"? Stok yang tadinya bertambah dari transaksi ini akan dikurangi kembali. Tindakan ini tidak bisa dibatalkan.`,
+      )
+    )
+      return;
+
+    setError(null);
+    const res = await fetch(`/api/purchases/${purchase.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error ?? "Gagal menghapus pembelian.");
+      return;
+    }
+    fetchPurchases();
+  }
+
   return (
     <div className="space-y-4">
+      {error && (
+        <div className="rounded-xl bg-red-50 border border-red-200 text-danger-600 text-sm px-4 py-3">{error}</div>
+      )}
+
       <Card className="p-4 sm:p-5">
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
@@ -62,13 +85,22 @@ export function PembelianClient() {
                   <td className="px-5 py-3 text-muted">{p.supplier?.name ?? "—"}</td>
                   <td className="px-5 py-3 text-muted">{p.user.name}</td>
                   <td className="px-5 py-3 text-right font-semibold tabular-nums">{formatCurrency(p.total)}</td>
-                  <td className="px-5 py-3 text-right">
-                    <Link
-                      href={`/pembelian/${p.id}`}
-                      className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
-                    >
-                      Detail <ChevronRight className="h-4 w-4" />
-                    </Link>
+                  <td className="px-5 py-3">
+                    <div className="flex items-center justify-end gap-3">
+                      <Link
+                        href={`/pembelian/${p.id}`}
+                        className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:text-brand-800"
+                      >
+                        Detail <ChevronRight className="h-4 w-4" />
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(p)}
+                        title="Hapus"
+                        className="h-8 w-8 flex items-center justify-center rounded-lg text-danger-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
