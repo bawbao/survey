@@ -5,7 +5,19 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { formatCurrency, formatNumber } from "@/lib/format";
-import { Wallet, Receipt, Package, AlertTriangle, Boxes, ShoppingBag, Printer, TrendingUp, Percent } from "lucide-react";
+import {
+  Wallet,
+  Receipt,
+  Package,
+  AlertTriangle,
+  Boxes,
+  ShoppingBag,
+  Printer,
+  TrendingUp,
+  Percent,
+  MinusCircle,
+  PiggyBank,
+} from "lucide-react";
 import { PeriodFilter, presetPeriod, type Period } from "./PeriodFilter";
 import { StatCard } from "./StatCard";
 import { DailyBarChart } from "./DailyBarChart";
@@ -119,20 +131,73 @@ export function LaporanClient() {
 
       {!loading && tab === "laba" && profitReport && (
         <>
+          <div className="flex items-center justify-between -mt-1">
+            <h3 className="text-sm font-semibold text-muted uppercase tracking-wide">Laba Kotor</h3>
+          </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard icon={TrendingUp} label="Laba Kotor" value={formatCurrency(profitReport.totalProfit)} />
-            <StatCard icon={Percent} label="Margin Laba" value={`${profitReport.marginPercent.toFixed(1)}%`} />
             <StatCard icon={Wallet} label="Total Pendapatan" value={formatCurrency(profitReport.totalRevenue)} />
             <StatCard icon={Package} label="Total Modal" value={formatCurrency(profitReport.totalCost)} tone="amber" />
+            <StatCard icon={TrendingUp} label="Laba Kotor" value={formatCurrency(profitReport.totalProfit)} />
+            <StatCard icon={Percent} label="Margin Kotor" value={`${profitReport.marginPercent.toFixed(1)}%`} />
           </div>
+
+          <div className="flex items-center justify-between pt-2">
+            <h3 className="text-sm font-semibold text-muted uppercase tracking-wide">Laba Bersih</h3>
+            <LinkButton href="/pengeluaran" variant="outline" size="sm">
+              <Receipt className="h-4 w-4" /> Kelola Pengeluaran
+            </LinkButton>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <StatCard icon={MinusCircle} label="Total Pengeluaran" value={formatCurrency(profitReport.totalExpenses)} tone="amber" />
+            <StatCard
+              icon={PiggyBank}
+              label="Laba Bersih"
+              value={formatCurrency(profitReport.netProfit)}
+              tone={profitReport.netProfit >= 0 ? "brand" : "danger"}
+            />
+            <StatCard
+              icon={Percent}
+              label="Margin Bersih"
+              value={`${profitReport.netMarginPercent.toFixed(1)}%`}
+              tone={profitReport.netProfit >= 0 ? "brand" : "danger"}
+            />
+          </div>
+
           <Card>
-            <CardHeader title="Tren Laba Harian" />
+            <CardHeader title="Tren Laba Kotor Harian" />
             <div className="px-5 sm:px-6 pb-5 pt-2">
               <DailyBarChart data={profitReport.daily} />
             </div>
           </Card>
+
           <Card className="overflow-hidden">
-            <CardHeader title="Produk Paling Menguntungkan" />
+            <CardHeader title="Rincian Pengeluaran per Kategori" />
+            {profitReport.expensesByCategory.length === 0 ? (
+              <div className="px-5 py-8 text-center text-sm text-muted">Belum ada pengeluaran pada periode ini.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-background text-muted text-xs uppercase tracking-wide">
+                    <tr>
+                      <th className="text-left font-medium px-5 py-3">Kategori</th>
+                      <th className="text-right font-medium px-5 py-3">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {profitReport.expensesByCategory.map((c) => (
+                      <tr key={c.categoryId}>
+                        <td className="px-5 py-3 font-medium text-foreground">{c.name}</td>
+                        <td className="px-5 py-3 text-right tabular-nums font-semibold">{formatCurrency(c.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+          <Card className="overflow-hidden">
+            <CardHeader title="Produk Paling Menguntungkan" subtitle="Berdasarkan laba kotor, sebelum dikurangi pengeluaran operasional." />
             {profitReport.topProducts.length === 0 ? (
               <div className="px-5 py-8 text-center text-sm text-muted">Belum ada data pada periode ini.</div>
             ) : (

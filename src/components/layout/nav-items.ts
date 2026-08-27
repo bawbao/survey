@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   BarChart3,
   Users,
+  Wallet,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -24,6 +25,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/produk", label: "Produk", icon: Package, adminOnly: true },
   { href: "/pembelian", label: "Pembelian", icon: Truck, adminOnly: true },
   { href: "/opname", label: "Stok Opname", icon: ClipboardCheck, adminOnly: true },
+  { href: "/pengeluaran", label: "Pengeluaran", icon: Wallet, adminOnly: true },
   { href: "/laporan", label: "Laporan", icon: BarChart3, adminOnly: true },
   { href: "/users", label: "Pengguna", icon: Users, adminOnly: true },
 ];

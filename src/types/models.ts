@@ -135,12 +135,40 @@ export interface ProfitProductRow {
   profit: number;
 }
 
+export interface ExpenseCategoryDTO {
+  id: string;
+  name: string;
+  _count?: { expenses: number };
+}
+
+export interface ExpenseDTO {
+  id: string;
+  categoryId: string;
+  category: ExpenseCategoryDTO;
+  amount: string;
+  date: string;
+  note: string | null;
+  userId: string;
+  user: { name: string };
+  createdAt: string;
+}
+
+export interface ExpenseCategoryTotal {
+  categoryId: string;
+  name: string;
+  total: number;
+}
+
 export interface ProfitReport {
   totalRevenue: number;
   totalCost: number;
   totalDiscount: number;
   totalProfit: number;
   marginPercent: number;
+  totalExpenses: number;
+  netProfit: number;
+  netMarginPercent: number;
+  expensesByCategory: ExpenseCategoryTotal[];
   daily: DailyPoint[];
   topProducts: ProfitProductRow[];
 }

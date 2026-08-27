@@ -85,14 +85,47 @@ async function ProfitReportPrint({ gte, lte }: { gte: Date; lte: Date }) {
   const report = await getProfitReport(gte, lte);
   return (
     <>
+      <h2 className="font-semibold mb-2">Laba Kotor</h2>
       <SummaryGrid
         items={[
-          ["Laba Kotor", formatCurrency(report.totalProfit)],
-          ["Margin Laba", `${report.marginPercent.toFixed(1)}%`],
           ["Total Pendapatan", formatCurrency(report.totalRevenue)],
           ["Total Modal", formatCurrency(report.totalCost)],
+          ["Laba Kotor", formatCurrency(report.totalProfit)],
+          ["Margin Kotor", `${report.marginPercent.toFixed(1)}%`],
         ]}
       />
+
+      <h2 className="font-semibold mb-2 mt-6">Laba Bersih</h2>
+      <SummaryGrid
+        items={[
+          ["Total Pengeluaran", formatCurrency(report.totalExpenses)],
+          ["Laba Bersih", formatCurrency(report.netProfit)],
+          ["Margin Bersih", `${report.netMarginPercent.toFixed(1)}%`],
+        ]}
+      />
+
+      {report.expensesByCategory.length > 0 && (
+        <>
+          <h2 className="font-semibold mb-2 mt-6">Rincian Pengeluaran per Kategori</h2>
+          <table className="w-full text-sm mb-2">
+            <thead>
+              <tr className="border-b-2 border-gray-800">
+                <th className="text-left font-semibold py-2">Kategori</th>
+                <th className="text-right font-semibold py-2">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.expensesByCategory.map((c) => (
+                <tr key={c.categoryId} className="border-b border-gray-200">
+                  <td className="py-2">{c.name}</td>
+                  <td className="py-2 text-right">{formatCurrency(c.total)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
       <h2 className="font-semibold mb-2 mt-6">Produk Paling Menguntungkan</h2>
       {report.topProducts.length === 0 ? (
         <p className="text-gray-500">Tidak ada data pada periode ini.</p>

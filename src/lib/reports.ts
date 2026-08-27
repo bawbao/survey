@@ -6,6 +6,7 @@ import type {
   StockReport,
   ProfitReport,
   ProfitProductRow,
+  ExpenseCategoryTotal,
   DailyPoint,
   TopProductRow,
   StockReportRow,
@@ -171,5 +172,40 @@ export async function getProfitReport(gte: Date, lte: Date): Promise<ProfitRepor
   const daily: DailyPoint[] = [...dailyMap.entries()].map(([date, total]) => ({ date, total })).sort((a, b) => a.date.localeCompare(b.date));
   const topProducts = [...productMap.values()].sort((a, b) => b.profit - a.profit).slice(0, 10);
 
-  return { totalRevenue, totalCost, totalDiscount, totalProfit, marginPercent, daily, topProducts };
+  // Laba bersih = laba kotor - pengeluaran operasional (gaji, sewa, transport, dll) periode ini.
+  const expenses = await prisma.expense.findMany({
+    where: { date: { gte, lte } },
+    include: { category: true },
+  });
+
+  const expenseCategoryMap = new Map<string, ExpenseCategoryTotal>();
+  let totalExpenses = 0;
+  for (const exp of expenses) {
+    const amount = Number(exp.amount);
+    totalExpenses += amount;
+    const existing = expenseCategoryMap.get(exp.categoryId);
+    if (existing) {
+      existing.total += amount;
+    } else {
+      expenseCategoryMap.set(exp.categoryId, { categoryId: exp.categoryId, name: exp.category.name, total: amount });
+    }
+  }
+  const expensesByCategory = [...expenseCategoryMap.values()].sort((a, b) => b.total - a.total);
+
+  const netProfit = totalProfit - totalExpenses;
+  const netMarginPercent = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+  return {
+    totalRevenue,
+    totalCost,
+    totalDiscount,
+    totalProfit,
+    marginPercent,
+    totalExpenses,
+    netProfit,
+    netMarginPercent,
+    expensesByCategory,
+    daily,
+    topProducts,
+  };
 }

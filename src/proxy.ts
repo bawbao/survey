@@ -9,6 +9,7 @@ const ADMIN_ONLY_PREFIXES = [
   "/produk",
   "/pembelian",
   "/opname",
+  "/pengeluaran",
   "/laporan",
   "/users",
   "/print/pembelian",

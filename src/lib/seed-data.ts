@@ -70,5 +70,11 @@ export async function seedInitialData(prisma: PrismaClient) {
     });
   }
 
+  // --- Kategori pengeluaran contoh (bisa ditambah/diubah Admin nanti) ---
+  const expenseCategoryNames = ["Gaji Karyawan", "Sewa Tempat", "Transportasi", "Listrik & Air", "Lainnya"];
+  for (const name of expenseCategoryNames) {
+    await prisma.expenseCategory.upsert({ where: { name }, update: {}, create: { name } });
+  }
+
   return { admin, supplier, productCount: products.length };
 }

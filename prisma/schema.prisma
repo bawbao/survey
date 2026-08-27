@@ -47,6 +47,7 @@ model User {
   sales          Sale[]
   stockOpnames   StockOpname[]
   stockMovements StockMovement[]
+  expenses       Expense[]
 
   @@map("users")
 }
@@ -222,4 +223,32 @@ model StockMovement {
 
   @@index([productId, date])
   @@map("stock_movements")
+}
+
+// Kategori pengeluaran operasional (gaji karyawan, sewa, transport, dll) —
+// bisa ditambah/diubah sendiri oleh Admin, tidak dikunci ke daftar tetap.
+model ExpenseCategory {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  expenses  Expense[]
+
+  @@map("expense_categories")
+}
+
+// Pengeluaran operasional di luar pembelian barang, dipakai untuk hitung
+// laba bersih (laba kotor - total pengeluaran periode berjalan).
+model Expense {
+  id         String          @id @default(cuid())
+  categoryId String
+  category   ExpenseCategory @relation(fields: [categoryId], references: [id])
+  amount     Decimal         @db.Decimal(14, 2)
+  date       DateTime        @default(now())
+  note       String?
+  userId     String
+  user       User            @relation(fields: [userId], references: [id])
+  createdAt  DateTime        @default(now())
+
+  @@index([date])
+  @@map("expenses")
 }
